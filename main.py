@@ -108,7 +108,7 @@ async def guess(context, *args):
 
                     history_str = '```\n'
                     od = OrderedDict(sorted(guesses[context.channel.id].items()))
-                    for k, v in list(od.items())[:MAX_HISTORY]:
+                    for k, v in list(od.items())[-MAX_HISTORY:]:
                         history_str += format_result(Result(*v))
                     history_str += '\n```'
                     await context.send(history_str)
