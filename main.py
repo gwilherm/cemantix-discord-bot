@@ -121,7 +121,7 @@ async def guess(context, *args):
                     await bot.change_presence(activity=discord.Activity(name=f'{solvers} gagnants aujourd\'hui.',
                                                                                 type=discord.ActivityType.watching))
                 else:
-                    await context.send(re.sub('<.{0,1}i>', '`', r['error']))
+                    await context.send(re.sub('<.{0,1}i>', '`', resp['error']))
             except Exception as e:
                 await context.send(f'Désolé, une erreur est survenue')
                 logger.error(e)
