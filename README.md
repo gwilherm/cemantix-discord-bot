@@ -1,6 +1,6 @@
-# LeSemantleBot
+# Cémantix Discord Bot
 
-Bot discord pour jouer au jeu Semantle en français.
+Bot discord pour jouer au jeu Cémantix.
 
 ## Dépendances
 
@@ -12,5 +12,5 @@ sudo apt install python3 python3-venv autotools-dev whiptail
 
 ```
 make
-./lesemantlebot.sh
+./cemantixbot.sh
 ```
