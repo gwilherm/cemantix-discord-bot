@@ -62,19 +62,22 @@ def format_result(result: Result):
     return result_str
 
 
-def get_emoji(points):
-    if not points:
-        return '\N{Freezing Face}'
-    elif points <= 900:
-        return '\N{Smiling Face with Sunglasses}'
-    elif points <= 989:
-        return '\N{Overheated Face}'
-    elif points <= 998:
-        return '\N{Fire}'
-    elif points == 999:
-        return '\N{Face Screaming In Fear}'
-    elif points >= 1000:
-        return '\N{Face with Party Horn and Party Hat}'
+def get_emoji(temp, points):
+    if temp < 0:
+        return '\N{Ice Cube}'
+    else:
+        if not points:
+            return '\N{Freezing Face}'
+        elif points <= 900:
+            return '\N{Smiling Face with Sunglasses}'
+        elif points <= 989:
+            return '\N{Overheated Face}'
+        elif points <= 998:
+            return '\N{Fire}'
+        elif points == 999:
+            return '\N{Face Screaming In Fear}'
+        elif points >= 1000:
+            return '\N{Face with Party Horn and Party Hat}'
 
 
 @bot.command(help='Try your word', aliases=['g'])
@@ -118,7 +121,7 @@ async def guess(context, *args):
                     result_str = '```\n' + format_result(result) + '\n```'
                     result_msg = await context.send(result_str)
 
-                    await result_msg.add_reaction(get_emoji(percentile))
+                    await result_msg.add_reaction(get_emoji(temperature, percentile))
 
                     await bot.change_presence(activity=discord.Activity(name=f'{solvers} gagnants aujourd\'hui.',
                                                                                 type=discord.ActivityType.watching))
