@@ -39,15 +39,19 @@ async def game_over():
         resp = requests.get(SERVER_URL + '/history').json()
         yesterday_word = resp[1][2]
 
+        coro = []
         for chan in guesses.keys():
             if chan not in guessed.keys():
                 try:
-                    await bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word}`')
+                    coro.append(bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word}`'))
                 except Exception as e:
                     logger.error(e)
-        await bot.change_presence(activity=None)
+        coro.append(bot.change_presence(activity=None))
+
         guesses = dict()
         guessed = dict()
+
+        await asyncio.gather(*coro)
 
 
 def format_result(result: Result):
