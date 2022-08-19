@@ -79,7 +79,6 @@ def get_emoji(points):
 
 @bot.command(help='Try your word', aliases=['g'])
 async def guess(context, *args):
-    global s
     async with mutex:
         if len(args) > 0:
             proposition = args[0].lower()
