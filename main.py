@@ -44,7 +44,6 @@ async def game_over():
                 try:
                     await bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word}`')
                 except Exception as e:
-                    await context.send(f'Désolé, une erreur est survenue')
                     logger.error(e)
         await bot.change_presence(activity=None)
         guesses = dict()
