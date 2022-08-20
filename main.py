@@ -89,8 +89,6 @@ async def guess(context, *args):
             if context.channel.id not in guesses:
                 guesses[context.channel.id] = dict()
 
-            try_number = len(guesses[context.channel.id]) + 1
-
             try:
                 resp = requests.post(SERVER_URL + '/score', data={"word": proposition}).json()
                 
@@ -107,16 +105,21 @@ async def guess(context, *args):
                             await context.send(f'Trop tard, le mot a déjà été trouvé par {guessed[context.channel.id].name} !')
 
                     temperature = score * 100
+                    if proposition not in list(map(lambda x: x.word, guesses[context.channel.id].values())):
 
-                    result = Result(proposition, try_number, temperature, percentile)
-                    guesses[context.channel.id][temperature] = result
+                        try_number = len(guesses[context.channel.id]) + 1
+                        result = Result(proposition, try_number, temperature, percentile)
+                        guesses[context.channel.id][temperature] = result
 
-                    history_str = '```\n'
-                    od = OrderedDict(sorted(guesses[context.channel.id].items()))
-                    for k, v in list(od.items())[-MAX_HISTORY:]:
-                        history_str += format_result(Result(*v))
-                    history_str += '\n```'
-                    await context.send(history_str)
+                        history_str = '```\n'
+                        od = OrderedDict(sorted(guesses[context.channel.id].items()))
+                        for k, v in list(od.items())[-MAX_HISTORY:]:
+                            history_str += format_result(Result(*v))
+                        history_str += '\n```'
+                        await context.send(history_str)
+                    else:
+                        await context.send(f'Le mot `{proposition} a déjà été proposé.')
+                        result = guesses[context.channel.id][temperature]
 
                     result_str = '```\n' + format_result(result) + '\n```'
                     result_msg = await context.send(result_str)
