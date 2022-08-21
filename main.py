@@ -118,7 +118,7 @@ async def guess(context, *args):
                         history_str += '\n```'
                         await context.send(history_str)
                     else:
-                        await context.send(f'Le mot `{proposition} a déjà été proposé.')
+                        await context.send(f'Le mot `{proposition}` a déjà été proposé.')
                         result = guesses[context.channel.id][temperature]
 
                     result_str = '```\n' + format_result(result) + '\n```'
