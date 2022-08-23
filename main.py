@@ -12,10 +12,10 @@ from collections import OrderedDict
 from collections import namedtuple
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-WORD_FILE = 'word.txt'
 MAX_HISTORY = 20
 
-Result = namedtuple('Result', ['word', 'try_number', 'temperature', 'points'])
+Game    = namedtuple('Game', ['guesses', 'guessed'])
+Result  = namedtuple('Result', ['word', 'try_number', 'temperature', 'points'])
 
 SERVER_URL = 'https://cemantix.herokuapp.com'
 
@@ -32,24 +32,23 @@ bot = commands.Bot(
 
 async def game_over():
     global bot
-    global guesses
-    global guessed
+    global games
     global word_to_guess
     async with mutex:
         resp = requests.get(SERVER_URL + '/history').json()
         yesterday_word = resp[1][2]
 
         coro = []
-        for chan in guesses.keys():
-            if chan not in guessed.keys():
+
+        for chan,game in games.items():
+            if not game.guessed:
                 try:
                     coro.append(bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word}`'))
                 except Exception as e:
                     logger.error(e)
         coro.append(bot.change_presence(activity=None))
 
-        guesses = dict()
-        guessed = dict()
+        games = dict()
 
         await asyncio.gather(*coro)
 
@@ -79,15 +78,17 @@ def get_emoji(temp, points):
         elif points >= 1000:
             return '\N{Face with Party Horn and Party Hat}'
 
-
+            
 @bot.command(help='Try your word', aliases=['g'])
 async def guess(context, *args):
     async with mutex:
         if len(args) > 0:
             proposition = args[0].lower()
 
-            if context.channel.id not in guesses:
-                guesses[context.channel.id] = dict()
+            if context.channel.id not in games:
+                games[context.channel.id] = Game(dict(), None)
+
+            game = games[context.channel.id]
 
             try:
                 resp = requests.post(SERVER_URL + '/score', data={"word": proposition}).json()
@@ -98,28 +99,28 @@ async def guess(context, *args):
                     percentile=resp.get('percentile')
 
                     if score == 1.0:
-                        if context.channel.id not in guessed:
+                        if not game.guessed:
                             await context.send(f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}`')
-                            guessed[context.channel.id] = context.author                            
+                            game.guessed = context.author                            
                         else:
-                            await context.send(f'Trop tard, le mot a déjà été trouvé par {guessed[context.channel.id].name} !')
+                            await context.send(f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !')
 
                     temperature = score * 100
-                    if proposition not in list(map(lambda x: x.word, guesses[context.channel.id].values())):
+                    if proposition not in list(map(lambda x: x.word, game.guesses.values())):
 
-                        try_number = len(guesses[context.channel.id]) + 1
+                        try_number = len(game.guesses) + 1
                         result = Result(proposition, try_number, temperature, percentile)
-                        guesses[context.channel.id][temperature] = result
+                        game.guesses[temperature] = result
 
                         history_str = '```\n'
-                        od = OrderedDict(sorted(guesses[context.channel.id].items()))
+                        od = OrderedDict(sorted(game.guesses.items()))
                         for k, v in list(od.items())[-MAX_HISTORY:]:
                             history_str += format_result(Result(*v))
                         history_str += '\n```'
                         await context.send(history_str)
                     else:
                         await context.send(f'Le mot `{proposition}` a déjà été proposé.')
-                        result = guesses[context.channel.id][temperature]
+                        result = game.guesses[temperature]
 
                     result_str = '```\n' + format_result(result) + '\n```'
                     result_msg = await context.send(result_str)
@@ -144,6 +145,7 @@ async def on_message_edit(before, after):
 async def on_ready():
     await bot.change_presence(activity=None)
 
+
 if __name__ == '__main__':
     # create logger
     logger = logging.getLogger('CemantixBot')
@@ -163,8 +165,7 @@ if __name__ == '__main__':
     logger.addHandler(ch)
 
     # initialize global
-    guesses = dict()
-    guessed = dict()
+    games = dict()
 
     # multithreading
     mutex = asyncio.Lock()
