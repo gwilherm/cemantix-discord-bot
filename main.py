@@ -3,6 +3,7 @@
 
 import os
 import re
+import json
 import logging
 import asyncio
 import discord
@@ -14,10 +15,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 MAX_HISTORY = 20
 
-Game    = namedtuple('Game', ['guesses', 'guessed'])
+Game    = namedtuple('Game', ['guesses', 'guessed', 'server'])
 Result  = namedtuple('Result', ['word', 'try_number', 'temperature', 'points'])
-
-SERVER_URL = 'https://cemantix.herokuapp.com'
 
 # Change only the no_category default string
 help_command = commands.DefaultHelpCommand(
@@ -33,17 +32,20 @@ bot = commands.Bot(
 async def game_over():
     global bot
     global games
+    global settings
     global word_to_guess
     async with mutex:
-        resp = requests.get(SERVER_URL + '/history').json()
-        yesterday_word = resp[1][2]
+        yesterday_word=[]
+        for serv in settings['servers']:
+            resp = requests.get(serv['host'] + '/history').json()
+            yesterday_word.append(resp[1][2])
 
         coro = []
 
         for chan,game in games.items():
             if not game.guessed:
                 try:
-                    coro.append(bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word}`'))
+                    coro.append(bot.get_channel(chan).send(f'Partie terminée ! Le mot à deviner était `{yesterday_word[game.server]}`'))
                 except Exception as e:
                     logger.error(e)
         coro.append(bot.change_presence(activity=None))
@@ -81,17 +83,20 @@ def get_emoji(temp, points):
             
 @bot.command(help='Try your word', aliases=['g'])
 async def guess(context, *args):
+    global games
+    global settings
     async with mutex:
         if len(args) > 0:
             proposition = args[0].lower()
 
             if context.channel.id not in games:
-                games[context.channel.id] = Game(dict(), None)
+                games[context.channel.id] = Game(dict(), None, 0)
 
             game = games[context.channel.id]
 
             try:
-                resp = requests.post(SERVER_URL + '/score', data={"word": proposition}).json()
+                host = settings['servers'][game.server]['host']
+                resp = requests.post(host + '/score', data={"word": proposition}).json()
                 
                 if 'error' not in resp:
                     solvers=resp.get('solvers')
@@ -136,6 +141,31 @@ async def guess(context, *args):
                 logger.error(e)
 
 
+@bot.command(help='Switch server', aliases=['s'])
+async def server(context, *args):
+    global games
+    global settings
+    async with mutex:
+        chan = context.channel.id
+        if len(args) > 0 and int(args[0]) > 0 and int(args[0]) <= len(settings['servers']):
+            serv_num = int(args[0]) - 1
+            serv_name = settings['servers'][serv_num]['name']
+            await context.send(f'Connexion au serveur `{serv_name}`')
+
+            games[chan] = Game(dict(), None, serv_num)
+        else:
+            server_list_str = '```\n'
+            for serv_num,serv in enumerate(settings['servers']):
+                serv_name = serv['name']
+                server_list_str += f'n°{serv_num+1}\t{serv_name}'
+                if chan in games and games[chan].server == serv_num:
+                    server_list_str += ' (Courant)'
+                server_list_str += '\n'
+            server_list_str += '```'
+
+            await context.send(server_list_str)
+
+
 @bot.event
 async def on_message_edit(before, after):
     await bot.process_commands(after)
@@ -163,6 +193,9 @@ if __name__ == '__main__':
 
     # add ch to logger
     logger.addHandler(ch)
+
+    with open('settings.json', 'r') as f:
+        settings = json.load(f)
 
     # initialize global
     games = dict()
