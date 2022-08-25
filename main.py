@@ -13,9 +13,10 @@ from collections import OrderedDict
 from collections import namedtuple
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
+from Game import Game
+
 MAX_HISTORY = 20
 
-Game    = namedtuple('Game', ['guesses', 'guessed', 'server'])
 Result  = namedtuple('Result', ['word', 'try_number', 'temperature', 'points'])
 
 # Change only the no_category default string
@@ -90,7 +91,7 @@ async def guess(context, *args):
             proposition = args[0].lower()
 
             if context.channel.id not in games:
-                games[context.channel.id] = Game(dict(), None, 0)
+                games[context.channel.id] = Game(0)
 
             game = games[context.channel.id]
 
@@ -152,7 +153,7 @@ async def server(context, *args):
             serv_name = settings['servers'][serv_num]['name']
             await context.send(f'Connexion au serveur `{serv_name}`')
 
-            games[chan] = Game(dict(), None, serv_num)
+            games[chan] = Game(serv_num)
         else:
             server_list_str = '```\n'
             for serv_num,serv in enumerate(settings['servers']):
