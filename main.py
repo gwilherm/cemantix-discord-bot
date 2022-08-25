@@ -100,7 +100,6 @@ async def guess(context, *args):
                 resp = requests.post(host + '/score', data={"word": proposition}).json()
                 
                 if 'error' not in resp:
-                    solvers=resp.get('solvers')
                     score=resp.get('score')
                     percentile=resp.get('percentile')
 
@@ -132,9 +131,6 @@ async def guess(context, *args):
                     result_msg = await context.send(result_str)
 
                     await result_msg.add_reaction(get_emoji(temperature, percentile))
-
-                    await bot.change_presence(activity=discord.Activity(name=f'{solvers} gagnants aujourd\'hui.',
-                                                                                type=discord.ActivityType.watching))
                 else:
                     await context.send(re.sub('<.{0,1}i>', '`', resp['error']))
             except Exception as e:
@@ -167,14 +163,27 @@ async def server(context, *args):
             await context.send(server_list_str)
 
 
+@bot.command(help='Server stats')
+async def stats(context):
+    global games
+    chan = context.channel.id
+
+    serv_num = games[chan].server if chan in games else 0
+
+    try:
+        host = settings['servers'][serv_num]['host']
+        resp = requests.get(host + '/stats').json()
+        day_num = resp['num']
+        solvers = resp['solvers']
+        await context.send(f'Jour {day_num}: Mot trouvé par {solvers} personnes.')
+    except Exception as e:
+        await context.send(f'Désolé, une erreur est survenue')
+        logger.error(e)
+
+
 @bot.event
 async def on_message_edit(before, after):
     await bot.process_commands(after)
-
-
-@bot.event
-async def on_ready():
-    await bot.change_presence(activity=None)
 
 
 if __name__ == '__main__':
