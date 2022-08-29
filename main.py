@@ -57,7 +57,11 @@ async def game_over():
 
 
 def format_result(result: Result):
-    result_str = f'n°{result.try_number:>4}\t{result.word:>20}\t{result.temperature:>6.2f}°C'
+    if result.try_number:
+        result_str = f'n°{result.try_number:>4}'
+    else:
+        result_str = '      '
+    result_str += f'\t{result.word:>20}\t{result.temperature:>6.2f}°C'
     if result.points:
         result_str += f'\t{result.points}‰'
     result_str += '\n'
@@ -81,7 +85,30 @@ def get_emoji(temp, points):
         elif points >= 1000:
             return '\N{Face with Party Horn and Party Hat}'
 
-            
+
+def nearby(game, word):
+    global settings
+    game_guesses = dict((g.word, g.try_number) for g in game.guesses.values())
+    serv_num = game.server
+    host = settings['servers'][serv_num]['host']
+    resp = requests.post(host + '/nearby', data={"word": word}).json()
+    nearby_str = '```\n'
+    for w in list(reversed(resp))[-MAX_HISTORY:]:
+        try_number = game_guesses.get(w[0])
+        nearby_str += format_result(Result(w[0], try_number, float(w[2]), w[1]))
+    nearby_str += '\n```'
+    return nearby_str
+
+
+def history(game):
+    history_str = '```\n'
+    od = OrderedDict(sorted(game.guesses.items()))
+    for k, v in list(od.items())[-MAX_HISTORY:]:
+        history_str += format_result(Result(*v))
+    history_str += '\n```'
+    return history_str
+
+
 @bot.command(help='Try your word', aliases=['g'])
 async def guess(context, *args):
     global games
@@ -106,9 +133,10 @@ async def guess(context, *args):
                     if score == 1.0:
                         if not game.guessed:
                             await context.send(f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}`')
-                            game.guessed = context.author                            
+                            game.guessed = context.author
                         else:
                             await context.send(f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !')
+                        await context.send(nearby(game, proposition))
 
                     temperature = score * 100
                     if proposition not in list(map(lambda x: x.word, game.guesses.values())):
@@ -116,13 +144,8 @@ async def guess(context, *args):
                         try_number = len(game.guesses) + 1
                         result = Result(proposition, try_number, temperature, percentile)
                         game.guesses[temperature] = result
-
-                        history_str = '```\n'
-                        od = OrderedDict(sorted(game.guesses.items()))
-                        for k, v in list(od.items())[-MAX_HISTORY:]:
-                            history_str += format_result(Result(*v))
-                        history_str += '\n```'
-                        await context.send(history_str)
+                        if score != 1.0:
+                            await context.send(history(game))
                     else:
                         await context.send(f'Le mot `{proposition}` a déjà été proposé.')
                         result = game.guesses[temperature]
@@ -144,7 +167,7 @@ async def server(context, *args):
     global settings
     async with mutex:
         chan = context.channel.id
-        if len(args) > 0 and int(args[0]) > 0 and int(args[0]) <= len(settings['servers']):
+        if len(args) > 0 and int(args[0]) > 0 and int(args[0]) <= len(settings['servers']): 
             serv_num = int(args[0]) - 1
             serv_name = settings['servers'][serv_num]['name']
             await context.send(f'Connexion au serveur `{serv_name}`')
