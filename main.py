@@ -93,7 +93,7 @@ def nearby(game, word):
     host = settings['servers'][serv_num]['host']
     resp = requests.post(host + '/nearby', data={"word": word}).json()
     nearby_str = '```\n'
-    for w in list(reversed(resp))[-MAX_HISTORY:]:
+    for w in list(reversed(resp[:MAX_HISTORY])):
         try_number = game_guesses.get(w[0])
         nearby_str += format_result(Result(w[0], try_number, float(w[2]), w[1]))
     nearby_str += '\n```'
