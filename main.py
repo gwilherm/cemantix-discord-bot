@@ -130,25 +130,26 @@ async def guess(context, *args):
                     score=resp.get('score')
                     percentile=resp.get('percentile')
 
-                    if score == 1.0:
-                        if not game.guessed:
-                            await context.send(f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}`')
-                            game.guessed = context.author
-                        else:
-                            await context.send(f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !')
-                        await context.send(nearby(game, proposition))
+                    win = (score == 1.0)
 
                     temperature = score * 100
                     if proposition not in list(map(lambda x: x.word, game.guesses.values())):
-
                         try_number = len(game.guesses) + 1
                         result = Result(proposition, try_number, temperature, percentile)
                         game.guesses[temperature] = result
-                        if score != 1.0:
+                        if not win:
                             await context.send(history(game))
                     else:
-                        await context.send(f'Le mot `{proposition}` a déjà été proposé.')
+                        if not win:
+                            await context.send(f'Le mot `{proposition}` a déjà été proposé.')
+                        else:
+                            await context.send(f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !')
                         result = game.guesses[temperature]
+
+                    if win and not game.guessed:
+                            await context.send(f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}`')
+                            game.guessed = context.author
+                            await context.send(nearby(game, proposition))
 
                     result_str = '```\n' + format_result(result) + '\n```'
                     result_msg = await context.send(result_str)
