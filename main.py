@@ -39,7 +39,7 @@ async def game_over():
         yesterday_word=[]
         for serv in settings['servers']:
             resp = requests.get(serv['host'] + '/history').json()
-            yesterday_word.append(resp[1][2])
+            yesterday_word.append(resp[1][1])
 
         coro = []
 
