@@ -170,12 +170,21 @@ async def server(context, *args):
     global settings
     async with mutex:
         chan = context.channel.id
-        if len(args) > 0 and int(args[0]) > 0 and int(args[0]) <= len(settings['servers']): 
-            serv_num = int(args[0]) - 1
-            serv_name = settings['servers'][serv_num]['name']
-            await context.send(f'Connexion au serveur `{serv_name}`')
+        if len(args) > 0:
 
-            games[chan] = Game(serv_num)
+            if args[0].isnumeric():
+                if int(args[0]) > 0 and int(args[0]) <= len(settings['servers']): 
+                    serv_num = int(args[0]) - 1
+                    serv_name = settings['servers'][serv_num]['name']
+                    await context.send(f'Connexion au serveur `{serv_name}`')
+                    games[chan] = Game(serv_num)
+            else:
+                for serv_num,serv in enumerate(settings['servers']):
+                    serv_name = serv['name']
+                    if args[0].lower() == serv_name.lower():
+                        await context.send(f'Connexion au serveur `{serv_name}`')
+                        games[chan] = Game(serv_num)
+                        break
         else:
             server_list_str = '```\n'
             for serv_num,serv in enumerate(settings['servers']):
