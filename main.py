@@ -130,6 +130,8 @@ async def guess(context, *args):
                     score=resp.get('score')
                     percentile=resp.get('percentile')
 
+                    answer_str = ''
+
                     win = (score == 1.0)
 
                     temperature = score * 100
@@ -138,23 +140,23 @@ async def guess(context, *args):
                         result = Result(proposition, try_number, temperature, percentile)
                         game.guesses[temperature] = result
                         if not win:
-                            await context.send(history(game))
+                            answer_str += history(game)
                     else:
                         if not win:
-                            await context.send(f'Le mot `{proposition}` a déjà été proposé.')
+                            answer_str += f'Le mot `{proposition}` a déjà été proposé.\n'
                         else:
-                            await context.send(f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !')
+                            answer_str += f'Trop tard, le mot a déjà été trouvé par {game.guessed.name} !\n'
                         result = game.guesses[temperature]
 
                     if win and not game.guessed:
-                            await context.send(f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}`')
                             game.guessed = context.author
-                            await context.send(nearby(game, proposition))
+                            answer_str += f'Bien joué <@{context.author.id}> ! Le mot était `{proposition}` !\n'
+                            answer_str += nearby(game, proposition)
 
-                    result_str = '```\n' + format_result(result) + '\n```'
-                    result_msg = await context.send(result_str)
+                    answer_str += '```\n' + format_result(result) + '\n```'
+                    answer_msg = await context.send(answer_str)
 
-                    await result_msg.add_reaction(get_emoji(temperature, percentile))
+                    await answer_msg.add_reaction(get_emoji(temperature, percentile))
                 else:
                     await context.send(re.sub('<.{0,1}i>', '`', resp['error']))
             except Exception as e:
