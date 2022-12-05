@@ -1,5 +1,5 @@
 {
     "servers": [
-        {"name": "Cémantix",   "host": "https://cemantix.herokuapp.com"}
+        {"name": "Cémantix",   "host": "https://cemantix.certitudes.org"}
     ]
 }
